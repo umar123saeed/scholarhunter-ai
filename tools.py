@@ -69,6 +69,93 @@ def fetch_page(url,max_chars=6000):
         for t in soup(["script","style","nav","footer","header","noscript","form","svg"]): t.decompose()
         return re.sub(r"\s+"," ",soup.get_text(" ",strip=True))[:max_chars]
     except Exception: return ""
+
+def inspect_url(url, timeout=10):
+    """Check whether a source URL is reachable and record redirects/status."""
+    checked_at=datetime.now(timezone.utc).isoformat()
+    if not url or not str(url).strip():
+        return {"ok": False, "status": None, "final_url": "", "checked_at": checked_at}
+
+    target=str(url).strip()
+    try:
+        response=requests.head(
+            target,
+            headers=_HEADERS,
+            timeout=timeout,
+            allow_redirects=True,
+        )
+        # Some sites reject HEAD even though GET works.
+        if response.status_code in {403, 405, 429} or response.status_code >= 500:
+            response=requests.get(
+                target,
+                headers=_HEADERS,
+                timeout=timeout,
+                allow_redirects=True,
+                stream=True,
+            )
+        ok=200 <= response.status_code < 400
+        return {
+            "ok": ok,
+            "status": response.status_code,
+            "final_url": response.url or target,
+            "checked_at": checked_at,
+        }
+    except requests.RequestException:
+        return {
+            "ok": False,
+            "status": None,
+            "final_url": target,
+            "checked_at": checked_at,
+        }
+
+
+def extract_application_link(url, page_text=""):
+    """Find a likely application/online-application URL from an official page."""
+    if not url:
+        return ""
+
+    try:
+        response=requests.get(
+            url,
+            headers=_HEADERS,
+            timeout=10,
+            allow_redirects=True,
+        )
+        if response.status_code != 200 or "html" not in response.headers.get("content-type", "").lower():
+            return ""
+
+        soup=BeautifulSoup(response.text, "html.parser")
+        candidates=[]
+        keywords=re.compile(
+            r"\b(apply|application|apply now|online application|submit application|portal|admission)\b",
+            re.I,
+        )
+        for anchor in soup.find_all("a", href=True):
+            label=anchor.get_text(" ", strip=True)
+            href=anchor.get("href", "").strip()
+            if not href or href.startswith(("#", "mailto:", "javascript:")):
+                continue
+            if not keywords.search(label):
+                continue
+            absolute=requests.compat.urljoin(response.url, href)
+            if absolute.startswith(("http://", "https://")):
+                candidates.append(absolute)
+
+        # Prefer links that explicitly say "apply now" / "application".
+        def score(link):
+            low=link.lower()
+            return (
+                3 if "apply" in low else 0
+            ) + (
+                2 if "application" in low else 0
+            ) + (
+                1 if "portal" in low else 0
+            )
+
+        return sorted(dict.fromkeys(candidates), key=score, reverse=True)[0] if candidates else ""
+    except requests.RequestException:
+        return ""
+
 def fetch_pages(urls,max_chars=6000):
     if not urls: return {}
     with ThreadPoolExecutor(max_workers=6) as ex: texts=list(ex.map(lambda u:fetch_page(u,max_chars),urls))
