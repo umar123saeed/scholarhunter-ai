@@ -44,6 +44,31 @@ def css():
     .profilebox{background:#fff;border:1px solid #e3eaf2;border-radius:18px;padding:20px;box-shadow:0 7px 24px rgba(34,56,82,.06)}
     .metricbox{background:#fff;border:1px solid #e3eaf2;border-radius:16px;padding:16px 18px;min-height:90px}.metricnum{font-size:28px;font-weight:900;color:#1d4f7a}.metriclabel{font-size:12px;color:#718096;text-transform:uppercase;letter-spacing:.5px}
     .stButton>button{border-radius:11px;font-weight:700}.stDownloadButton>button{border-radius:11px}
+
+    /* Sidebar form controls: keep the white fields readable. */
+    [data-testid="stFileUploader"] *,
+    [data-testid="stFileUploaderDropzone"] *{
+        color:#111827 !important;
+    }
+    [data-testid="stFileUploaderDropzone"]{
+        background:#ffffff !important;
+        border:1px solid #d7e0ea !important;
+    }
+    [data-testid="stTextArea"] textarea,
+    [data-testid="stTextInput"] input{
+        color:#111827 !important;
+        background:#ffffff !important;
+        -webkit-text-fill-color:#111827 !important;
+    }
+    [data-testid="stTextArea"] textarea::placeholder,
+    [data-testid="stTextInput"] input::placeholder{
+        color:#667085 !important;
+        opacity:1 !important;
+    }
+    [data-baseweb="select"] *,
+    [data-baseweb="multi-select"] *{
+        color:#111827 !important;
+    }
     </style>""",unsafe_allow_html=True)
 css()
 
