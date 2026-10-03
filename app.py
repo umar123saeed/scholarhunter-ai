@@ -45,45 +45,7 @@ def css():
     .metricbox{background:#fff;border:1px solid #e3eaf2;border-radius:16px;padding:16px 18px;min-height:90px}.metricnum{font-size:28px;font-weight:900;color:#1d4f7a}.metriclabel{font-size:12px;color:#718096;text-transform:uppercase;letter-spacing:.5px}
     .stButton>button{border-radius:11px;font-weight:700}.stDownloadButton>button{border-radius:11px}
     </style>""",unsafe_allow_html=True)
-css(/* CV / Resume uploader */
-[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
-    background: #ffffff !important;
-    border: 1px solid #d9e2ec !important;
-}
-
-[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] * {
-    color: #111827 !important;
-}
-
-[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button {
-    color: #111827 !important;
-    background: #ffffff !important;
-    border: 1px solid #cbd5e1 !important;
-}
-
-/* Research interests + other text inputs */
-[data-testid="stSidebar"] textarea,
-[data-testid="stSidebar"] input {
-    color: #111827 !important;
-    background-color: #ffffff !important;
-    -webkit-text-fill-color: #111827 !important;
-}
-
-[data-testid="stSidebar"] textarea::placeholder,
-[data-testid="stSidebar"] input::placeholder {
-    color: #64748b !important;
-    opacity: 1 !important;
-}
-
-/* Select boxes / multiselect */
-[data-testid="stSidebar"] [data-baseweb="select"] {
-    color: #111827 !important;
-    background-color: #ffffff !important;
-}
-
-[data-testid="stSidebar"] [data-baseweb="select"] * {
-    color: #111827 !important;
-})
+css()
 
 st.markdown('''<div class="hero"><h1>🎓 ScholarHunter AI</h1><p>Your personal scholarship intelligence workspace — discover relevant opportunities, verify live sources, understand your fit, and track applications.</p><span class="pill">Multi-Agent AI</span><span class="pill">Live web discovery</span><span class="pill">Evidence-first</span><span class="pill">Application tracker</span></div>''',unsafe_allow_html=True)
 
