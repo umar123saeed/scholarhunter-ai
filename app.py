@@ -76,14 +76,14 @@ st.markdown('''<div class="hero"><h1>🎓 ScholarHunter AI</h1><p>Your personal 
 
 with st.sidebar:
     st.markdown("## 🎯 Build your profile")
-    st.caption("Give the agents enough context to find scholarships that actually match you.")
+    st.caption("Add a little information about your studies so we can find scholarships that match you.")
     cv_file=st.file_uploader("CV / Resume",type=["pdf","txt"])
     interests=st.text_area("Research interests",placeholder="e.g. Generative AI, NLP, Computer Vision",height=95)
     domain=st.text_input("Target field / domain",placeholder="e.g. Artificial Intelligence")
     level=st.selectbox("Study level",["MS","PhD","Postdoc"])
     selected=st.multiselect("Preferred countries",COUNTRIES,default=["United Kingdom","Germany","Turkey"])
     custom=st.text_input("Other countries",placeholder="Pakistan, Sweden")
-    max_searches=st.slider("Live searches",1,5,4,help="More searches = broader discovery but more API usage.")
+    max_searches=st.slider("Live searches",1,5,4,help="More searches can find more opportunities, but may take a little longer.")
     run_clicked=st.button("🚀 Find My Scholarships",type="primary",use_container_width=True)
     if st.session_state.last_checked: st.caption(f"Last run: {st.session_state.last_checked}")
 
@@ -95,7 +95,7 @@ def execute():
     cv_text=""
     if cv_file:
         try:cv_text=parse_cv(cv_file,cv_file.name)
-        except Exception as exc:st.error(f"Could not read CV: {exc}");return
+        except Exception:st.error("We could not read that CV. Please try a PDF or TXT file with readable text.");return
     with st.status("ScholarHunter is working…",expanded=True) as status:
         try:
             llm=sh_crew.get_llm(api_key)
@@ -103,14 +103,15 @@ def execute():
             profile=sh_crew.analyze_profile(cv_text,interests,domain,countries,level,llm)
             st.write("② Opportunity Scout — discovering current opportunities")
             raw,queries,warn=sh_crew.scout_opportunities(profile,level,max_searches,llm)
-            st.write("③ Evidence + Fit — extracting requirements and checking sources")
+            st.write("③ Scholarship details — checking requirements and your match")
             records,gap,warn2=sh_crew.build_database_and_gaps(profile,raw,level,llm)
-            st.write("④ Tracker — calculating urgency and application status")
+            st.write("④ Final check — organizing deadlines and application status")
             df=tracker.apply_state(tracker.records_to_df(records))
             st.session_state.profile=profile;st.session_state.raw=raw;st.session_state.queries=queries;st.session_state.gap=gap;st.session_state.warnings=[x for x in (warn,warn2) if x];st.session_state.summary=tracker.plain_summary(df);st.session_state.run_id+=1;st.session_state.last_checked=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC");persist_frames(df)
             status.update(label=f"Done — {len(df)} opportunities processed",state="complete",expanded=False)
-        except Exception as exc:
-            status.update(label="Run failed",state="error");st.error(f"{type(exc).__name__}: {str(exc)[:700]}")
+        except Exception:
+            status.update(label="Something went wrong",state="error")
+            st.error("We could not complete the search right now. Please check your information and try again.")
 if run_clicked:execute()
 
 profile=st.session_state.profile;work=st.session_state.work_df;current=st.session_state.current_df;verify=st.session_state.verify_df;gap=st.session_state.gap
@@ -135,7 +136,7 @@ st.markdown('<div class="section-title">🔎 Scholarship discovery</div>',unsafe
 if current is None:
     st.info("Start from the sidebar: upload your CV and/or enter your research interests, choose countries, then click **Find My Scholarships**.")
 else:
-    st.caption("Current opportunities are separated from uncertain and expired results. Source links are checked at runtime; always confirm final eligibility and deadline on the official page before applying.")
+    st.caption("We separate current opportunities from results that need checking. Always confirm the final eligibility and deadline on the official page before applying.")
     if st.session_state.warnings:
         for w in st.session_state.warnings:st.warning(w)
     if current.empty:st.warning("No opportunity with a currently usable deadline/rolling status was verified. Check Needs Verification or broaden your search.")
@@ -164,7 +165,7 @@ else:
 
 # Secondary workspace
 if work is not None:
-    tabs=st.tabs(["📊 Gap Analysis","📌 Application Tracker","⚠️ Needs Verification","📤 Export","🧪 Search Evidence"])
+    tabs=st.tabs(["📊 Your Match","📌 Application Tracker","⚠️ Needs Verification","📤 Export"])
     with tabs[0]:
         if gap:
             a,b,c=st.columns(3)
@@ -187,17 +188,13 @@ if work is not None:
     with tabs[2]:
         if verify is None or verify.empty:st.success("No uncertain opportunities in this run.")
         else:
-            st.info("These records need manual verification because the page did not provide enough reliable current-cycle evidence.")
+            st.info("These opportunities need a quick manual check because we could not confirm enough current information from the source page.")
             st.dataframe(verify[[c for c in ["scholarship_name","country","deadline","verification_status","link_verified","confidence","official_link","application_link"] if c in verify.columns]],hide_index=True,use_container_width=True,column_config={"official_link":st.column_config.LinkColumn("Official",display_text="Open"),"application_link":st.column_config.LinkColumn("Apply",display_text="Open")})
         expired=st.session_state.expired_df
         with st.expander(f"Expired / historical ({0 if expired is None else len(expired)})"):
             if expired is not None and not expired.empty:st.dataframe(expired[[c for c in ["scholarship_name","country","deadline","official_link"] if c in expired.columns]],hide_index=True,use_container_width=True)
-            else:st.write("No expired records retained.")
+            else:st.write("No expired opportunities to show.")
     with tabs[3]:
-        st.caption("Exports contain the structured scholarship data and gap report; links are preserved for review.")
+        st.caption("Download your scholarship results and application notes for later review.")
         st.download_button("⬇️ Download Excel",st.session_state.export_xlsx,"scholarhunter.xlsx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",use_container_width=True)
         st.download_button("⬇️ Download CSV",st.session_state.export_csv,"scholarhunter.csv","text/csv",use_container_width=True)
-    with tabs[4]:
-        st.markdown("### What the Scout actually searched")
-        for q in st.session_state.queries:st.code(q)
-        st.caption(f"{len(st.session_state.raw)} source records passed into the evidence pipeline.")
