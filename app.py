@@ -17,7 +17,10 @@ COUNTRIES=["United Kingdom","United States","Germany","Canada","Australia","Chin
 DEFAULT={"profile":None,"raw":[],"queries":[],"all_df":None,"current_df":None,"verify_df":None,"expired_df":None,"work_df":None,"gap":None,"summary":"","warnings":[],"run_id":0,"export_csv":None,"export_xlsx":None,"last_checked":""}
 for k,v in DEFAULT.items():st.session_state.setdefault(k,v)
 
-def get_api_key():
+def get_api_key(user_api_key=""):
+    user_api_key=(user_api_key or "").strip()
+    if user_api_key:
+        return user_api_key
     try:
         if "GROQ_API_KEY" in st.secrets:return str(st.secrets["GROQ_API_KEY"]).strip().strip('"').strip("'")
     except Exception:pass
@@ -83,13 +86,17 @@ with st.sidebar:
     level=st.selectbox("Study level",["MS","PhD","Postdoc"])
     selected=st.multiselect("Preferred countries",COUNTRIES,default=["United Kingdom","Germany","Turkey"])
     custom=st.text_input("Other countries",placeholder="Pakistan, Sweden")
+    st.markdown("---")
+    st.markdown('### 🔑 Groq API Key <span style="font-size:12px;color:#aebbd0">(Optional)</span>',unsafe_allow_html=True)
+    user_groq_api_key=st.text_input("Your Groq API key",type="password",placeholder="Paste your Groq API key here",help="Optional. If you leave this empty, ScholarHunter will use the GROQ_API_KEY configured by the app owner.",label_visibility="collapsed")
+    st.caption("Your key is used only for this search and is not shown on the page.")
     max_searches=st.slider("Live searches",1,5,4,help="More searches can find more opportunities, but may take a little longer.")
     run_clicked=st.button("🚀 Find My Scholarships",type="primary",use_container_width=True)
     if st.session_state.last_checked: st.caption(f"Last run: {st.session_state.last_checked}")
 
 def execute():
-    api_key=get_api_key();countries=list(dict.fromkeys(selected+[c.strip() for c in custom.split(",") if c.strip()]))
-    if not api_key:st.error("GROQ_API_KEY is missing. Add it to .env locally or Streamlit Secrets when deployed.");return
+    api_key=get_api_key(user_groq_api_key);countries=list(dict.fromkeys(selected+[c.strip() for c in custom.split(",") if c.strip()]))
+    if not api_key:st.error("AI service is not configured yet. Please try again later.");return
     if not cv_file and not interests.strip():st.error("Upload a CV or enter research interests first.");return
     if not countries:st.error("Select at least one country.");return
     cv_text=""
@@ -170,11 +177,17 @@ if work is not None:
         if gap:
             a,b,c=st.columns(3)
             with a:
-                st.markdown("### Strengths");[st.success(x) for x in (gap.strengths or ["No strong evidence returned."])]
+                st.markdown("### Strengths")
+                for x in (gap.strengths or ["No strong evidence returned."]):
+                    st.success(str(x))
             with b:
-                st.markdown("### Gaps");[st.warning(x) for x in (gap.gaps or ["No major gap was identified."])]
+                st.markdown("### Gaps")
+                for x in (gap.gaps or ["No major gap was identified."]):
+                    st.warning(str(x))
             with c:
-                st.markdown("### Next actions");[st.info(x) for x in (gap.recommendations or ["Review the requirements of your shortlisted opportunities."])]
+                st.markdown("### Next actions")
+                for x in (gap.recommendations or ["Review the requirements of your shortlisted opportunities."]):
+                    st.info(str(x))
     with tabs[1]:
         st.markdown("### Track your applications")
         editable=work[[c for c in ["scholarship_name","country","deadline","days_remaining","urgency","status","notes","official_link"] if c in work.columns]].copy()
