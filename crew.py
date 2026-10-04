@@ -128,7 +128,7 @@ def scout_opportunities(profile,level,max_searches,llm)->Tuple[List[RawResult],L
         data=_run_json(factory,desc,"JSON array of search query strings.",dict(today=date.today().isoformat(),n=max_searches,keywords=", ".join(profile.keywords),countries=", ".join(profile.countries),level=level))
         if isinstance(data,dict): data=data.get("queries",[])
         queries=[str(q).strip() for q in data if str(q).strip()]
-    except Exception as exc: warning=f"Scout planning failed ({str(exc)[:90]}); fallback searches were used."
+    except Exception: warning="We used a backup search plan because the search planner was unavailable."
     for q in _fallback_queries(profile,level):
         if len(queries)>=max_searches: break
         if q not in queries: queries.append(q)
@@ -217,11 +217,11 @@ def build_database_and_gaps(profile,raw,level,llm,parallel=False):
         return seeds,GapReport(gaps=["No live opportunity with a verifiable current cycle was found in this search."],recommendations=["Broaden countries/keywords or retry later, then verify seed hints on official sites."]),"No live current opportunities were verified. Seed discovery hints are shown separately and are not treated as current."
     try: records=_task_database(raw,level,llm)
     except Exception as exc:
-        warning=f"Database structuring failed ({str(exc)[:100]}). Conservative records were built from search evidence."
+        warning="Some scholarship details could not be fully organized, so we used the available source information. Please review the official pages before applying."
         records=[ScholarshipRecord(scholarship_name=r.title or urlparse(r.url).netloc,provider=urlparse(r.url).netloc.replace("www.",""),country=next((c for c in profile.countries if c.lower() in (r.title+" "+r.snippet).lower()),"Unknown"),level=level,deadline=r.deadline,official_link=r.url,confidence="low",notes="Auto-built from search evidence; review official page.") for r in raw]
     records=_post_verify(records,raw,profile,level)
     try: gap=_task_gap(profile,records,llm) if records else GapReport()
-    except Exception as exc: gap=GapReport(); warning += f" Gap analysis failed: {str(exc)[:90]}"
+    except Exception as exc: gap=GapReport(); warning += " Some profile matching details could not be calculated, so the available results are shown without that extra comparison."
     by_url={tools.norm_url(x.url):x for x in gap.per_item if x.url}
     for rec in records:
         item=by_url.get(tools.norm_url(rec.official_link))
